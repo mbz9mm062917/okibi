@@ -17,6 +17,8 @@ String formatPostTime(DateTime time, {DateTime? now}) {
 
 /// 投稿1件分のカード。[showVisibility] が true のとき、非公開の投稿に「非公開」と添える。
 /// [onAuthorTap] を渡すと、投稿者のアイコンと名前がタップできて、その人のUIDが渡される。
+/// [watchHasReacted] と [onToggleReaction] を渡すと、炎ボタンで反応の付け外しができる。
+/// 渡さないときは、数だけ表示してタップはできない。
 class PostCard extends StatelessWidget {
   const PostCard({
     super.key,
@@ -24,12 +26,16 @@ class PostCard extends StatelessWidget {
     required this.loadProfile,
     this.showVisibility = false,
     this.onAuthorTap,
+    this.watchHasReacted,
+    this.onToggleReaction,
   });
 
   final Post post;
   final Future<UserProfile> Function(String uid) loadProfile;
   final bool showVisibility;
   final void Function(String uid)? onAuthorTap;
+  final Stream<bool> Function(String postId)? watchHasReacted;
+  final Future<void> Function(String postId)? onToggleReaction;
 
   @override
   Widget build(BuildContext context) {
@@ -90,9 +96,91 @@ class PostCard extends StatelessWidget {
                 style: textTheme.bodySmall?.copyWith(color: muted),
               ),
             ],
+            const SizedBox(height: 8),
+            _ReactionButton(
+              postId: post.id,
+              reactionCount: post.reactionCount,
+              hasReacted: watchHasReacted?.call(post.id),
+              onToggle: onToggleReaction,
+            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// 炎リアクションのボタン。[hasReacted] が null のとき(反応先の指定が無いとき)は
+/// 数だけを表示し、タップはできない。
+class _ReactionButton extends StatefulWidget {
+  const _ReactionButton({
+    required this.postId,
+    required this.reactionCount,
+    required this.hasReacted,
+    required this.onToggle,
+  });
+
+  final String postId;
+  final int reactionCount;
+  final Stream<bool>? hasReacted;
+  final Future<void> Function(String postId)? onToggle;
+
+  @override
+  State<_ReactionButton> createState() => _ReactionButtonState();
+}
+
+class _ReactionButtonState extends State<_ReactionButton> {
+  bool _busy = false;
+
+  Future<void> _tap() async {
+    final onToggle = widget.onToggle;
+    if (onToggle == null || _busy) return;
+    setState(() => _busy = true);
+    try {
+      await onToggle(widget.postId);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('リアクションに失敗しました: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final canTap = widget.onToggle != null && widget.hasReacted != null;
+    return StreamBuilder<bool>(
+      stream: widget.hasReacted,
+      builder: (context, snapshot) {
+        final reacted = snapshot.data ?? false;
+        final color = reacted
+            ? Colors.deepOrange
+            : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5);
+        return InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: canTap && !_busy ? _tap : null,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  reacted
+                      ? Icons.local_fire_department
+                      : Icons.local_fire_department_outlined,
+                  size: 18,
+                  color: color,
+                ),
+                const SizedBox(width: 4),
+                Text('${widget.reactionCount}', style: TextStyle(color: color)),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -106,6 +194,8 @@ class PostListBody extends StatelessWidget {
     required this.emptyMessage,
     this.showVisibility = false,
     this.onAuthorTap,
+    this.watchHasReacted,
+    this.onToggleReaction,
   });
 
   final AsyncSnapshot<List<Post>> snapshot;
@@ -113,6 +203,8 @@ class PostListBody extends StatelessWidget {
   final String emptyMessage;
   final bool showVisibility;
   final void Function(String uid)? onAuthorTap;
+  final Stream<bool> Function(String postId)? watchHasReacted;
+  final Future<void> Function(String postId)? onToggleReaction;
 
   @override
   Widget build(BuildContext context) {
@@ -140,6 +232,8 @@ class PostListBody extends StatelessWidget {
         loadProfile: loadProfile,
         showVisibility: showVisibility,
         onAuthorTap: onAuthorTap,
+        watchHasReacted: watchHasReacted,
+        onToggleReaction: onToggleReaction,
       ),
     );
   }

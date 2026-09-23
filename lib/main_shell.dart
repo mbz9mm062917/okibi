@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'data/follow_repository.dart';
 import 'data/post.dart';
 import 'data/post_repository.dart';
+import 'data/reaction_repository.dart';
 import 'data/user_repository.dart';
 import 'home_page.dart';
 import 'timeline_page.dart';
@@ -22,6 +23,7 @@ class _MainShellState extends State<MainShell> {
   final _posts = PostRepository();
   final _users = UserRepository();
   final _follows = FollowRepository();
+  final _reactions = ReactionRepository();
 
   late final String _myUid = FirebaseAuth.instance.currentUser!.uid;
 
@@ -55,6 +57,10 @@ class _MainShellState extends State<MainShell> {
             other: uid,
             following: following,
           ),
+          watchHasReacted: (postId) =>
+              _reactions.watchHasReacted(postId: postId, uid: _myUid),
+          onToggleReaction: (postId) =>
+              _reactions.toggleReaction(postId: postId, uid: _myUid),
         ),
       ),
     );
@@ -73,6 +79,10 @@ class _MainShellState extends State<MainShell> {
             followingPosts: _followingTimeline,
             loadProfile: _users.fetchProfile,
             onOpenProfile: _openUserProfile,
+            watchHasReacted: (postId) =>
+                _reactions.watchHasReacted(postId: postId, uid: _myUid),
+            onToggleReaction: (postId) =>
+                _reactions.toggleReaction(postId: postId, uid: _myUid),
           ),
         ],
       ),

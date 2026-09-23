@@ -18,6 +18,8 @@ class TimelinePage extends StatelessWidget {
     required this.followingPosts,
     required this.loadProfile,
     required this.onOpenProfile,
+    this.watchHasReacted,
+    this.onToggleReaction,
   });
 
   final Stream<List<Post>> posts;
@@ -26,6 +28,10 @@ class TimelinePage extends StatelessWidget {
 
   /// 投稿者の名前やアイコンがタップされたとき、その人のUIDを渡す。
   final void Function(String uid) onOpenProfile;
+
+  /// 炎リアクション。渡さないときは数だけ表示される。
+  final Stream<bool> Function(String postId)? watchHasReacted;
+  final Future<void> Function(String postId)? onToggleReaction;
 
   @override
   Widget build(BuildContext context) {
@@ -55,6 +61,8 @@ class TimelinePage extends StatelessWidget {
                       // 自分の非公開の投稿も並ぶので、「非公開」の印を付ける。
                       showVisibility: true,
                       onAuthorTap: onOpenProfile,
+                      watchHasReacted: watchHasReacted,
+                      onToggleReaction: onToggleReaction,
                     ),
                     PostListBody(
                       snapshot: followingSnapshot,
@@ -62,6 +70,8 @@ class TimelinePage extends StatelessWidget {
                       emptyMessage:
                           'フォロー中の人の投稿は、まだありません\n全体タブで気になる人の名前をタップして、フォローしてみましょう',
                       onAuthorTap: onOpenProfile,
+                      watchHasReacted: watchHasReacted,
+                      onToggleReaction: onToggleReaction,
                     ),
                   ],
                 );

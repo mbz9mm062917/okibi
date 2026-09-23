@@ -22,6 +22,8 @@ class UserProfilePage extends StatelessWidget {
     required this.posts,
     required this.loadProfile,
     required this.onSetFollowing,
+    this.watchHasReacted,
+    this.onToggleReaction,
   });
 
   final bool isMe;
@@ -34,6 +36,10 @@ class UserProfilePage extends StatelessWidget {
 
   /// フォローする(true)/やめる(false)。
   final Future<void> Function(bool following) onSetFollowing;
+
+  /// 炎リアクション。渡さないときは数だけ表示される。
+  final Stream<bool> Function(String postId)? watchHasReacted;
+  final Future<void> Function(String postId)? onToggleReaction;
 
   @override
   Widget build(BuildContext context) {
@@ -118,7 +124,12 @@ class UserProfilePage extends StatelessWidget {
                 children: [
                   const SizedBox(height: 8),
                   for (final post in items)
-                    PostCard(post: post, loadProfile: loadProfile),
+                    PostCard(
+                      post: post,
+                      loadProfile: loadProfile,
+                      watchHasReacted: watchHasReacted,
+                      onToggleReaction: onToggleReaction,
+                    ),
                 ],
               );
             },

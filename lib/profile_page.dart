@@ -19,6 +19,8 @@ class ProfilePage extends StatelessWidget {
     required this.loadProfile,
     required this.onSaveProfile,
     required this.onSignOut,
+    this.watchHasReacted,
+    this.onToggleReaction,
   });
 
   final Stream<UserProfile> profile;
@@ -30,6 +32,10 @@ class ProfilePage extends StatelessWidget {
   final Future<UserProfile> Function(String uid) loadProfile;
   final Future<void> Function(ProfileEdit edit) onSaveProfile;
   final Future<void> Function() onSignOut;
+
+  /// 炎リアクション(「自分の投稿」に渡す)。渡さないときは数だけ表示される。
+  final Stream<bool> Function(String postId)? watchHasReacted;
+  final Future<void> Function(String postId)? onToggleReaction;
 
   @override
   Widget build(BuildContext context) {
@@ -87,6 +93,8 @@ class ProfilePage extends StatelessWidget {
                 builder: (_) => MyPostsPage(
                   posts: watchMyPosts(),
                   loadProfile: loadProfile,
+                  watchHasReacted: watchHasReacted,
+                  onToggleReaction: onToggleReaction,
                 ),
               ),
             ),

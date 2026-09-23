@@ -4,6 +4,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 
 import 'data/follow_repository.dart';
 import 'data/post_repository.dart';
+import 'data/reaction_repository.dart';
 import 'data/stamp_repository.dart';
 import 'data/user_repository.dart';
 import 'post_compose_page.dart';
@@ -31,6 +32,7 @@ class _HomePageState extends State<HomePage> {
   UserRepository get _users => widget.users;
   final _stamps = StampRepository();
   final _posts = PostRepository();
+  final _reactions = ReactionRepository();
 
   late final User _user = FirebaseAuth.instance.currentUser!;
   late final DateTime _today = DateTime.now();
@@ -162,6 +164,10 @@ class _HomePageState extends State<HomePage> {
           followerCount: widget.follows.watchFollowerCount(_user.uid),
           watchMyPosts: () => _posts.watchMyPosts(_user.uid),
           loadProfile: _users.fetchProfile,
+          watchHasReacted: (postId) =>
+              _reactions.watchHasReacted(postId: postId, uid: _user.uid),
+          onToggleReaction: (postId) =>
+              _reactions.toggleReaction(postId: postId, uid: _user.uid),
           onSaveProfile: (ProfileEdit edit) => _users.updateProfile(
             _user.uid,
             displayName: edit.displayName,

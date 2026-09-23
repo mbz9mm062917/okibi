@@ -7,6 +7,15 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // 炎リアクション用: reactionCount だけを ±1 する更新かどうか。
+    // これにより、投稿者以外の人でもリアクションの数だけは更新できる
+    // (Cloud Functionsを使わずにクライアント側だけで集計を完結させるため)。
+    function isReactionCountToggle() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactionCount'])
+        && (request.resource.data.reactionCount == resource.data.reactionCount + 1
+            || request.resource.data.reactionCount == resource.data.reactionCount - 1);
+    }
+
     // users/{uid} : プロフィール。閲覧は全ログインユーザー、更新は本人のみ
     match /users/{uid} {
       allow read: if signedIn();
@@ -25,7 +34,9 @@ service cloud.firestore {
       allow read: if signedIn() &&
         (resource.data.isPublic == true || resource.data.authorUid == request.auth.uid);
       allow create: if signedIn() && request.resource.data.authorUid == request.auth.uid;
-      allow update, delete: if signedIn() && resource.data.authorUid == request.auth.uid;
+      allow update: if signedIn() &&
+        (resource.data.authorUid == request.auth.uid || isReactionCountToggle());
+      allow delete: if signedIn() && resource.data.authorUid == request.auth.uid;
     }
 
     // monthlyReflections/{uid_month} : 月次AI振り返り。posts同様に公開範囲を判定
@@ -37,9 +48,12 @@ service cloud.firestore {
     }
 
     // reactions/{postId_uid} : 炎リアクション。自分の反応のみ作成・削除可
+    // ドキュメントIDは「投稿ID_反応する人」に固定し、他人になりすました反応を防ぐ。
     match /reactions/{reactionId} {
       allow read: if signedIn();
-      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && reactionId == request.resource.data.postId + '_' + request.auth.uid;
       allow delete: if signedIn() && resource.data.uid == request.auth.uid;
     }
 

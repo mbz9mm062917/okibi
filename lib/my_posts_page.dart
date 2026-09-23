@@ -10,10 +10,14 @@ class MyPostsPage extends StatelessWidget {
     super.key,
     required this.posts,
     required this.loadProfile,
+    this.watchHasReacted,
+    this.onToggleReaction,
   });
 
   final Stream<List<Post>> posts;
   final Future<UserProfile> Function(String uid) loadProfile;
+  final Stream<bool> Function(String postId)? watchHasReacted;
+  final Future<void> Function(String postId)? onToggleReaction;
 
   @override
   Widget build(BuildContext context) {
@@ -26,6 +30,8 @@ class MyPostsPage extends StatelessWidget {
           loadProfile: loadProfile,
           emptyMessage: 'まだ投稿がありません',
           showVisibility: true,
+          watchHasReacted: watchHasReacted,
+          onToggleReaction: onToggleReaction,
         ),
       ),
     );
