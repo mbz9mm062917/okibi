@@ -16,17 +16,20 @@ String formatPostTime(DateTime time, {DateTime? now}) {
 }
 
 /// 投稿1件分のカード。[showVisibility] が true のとき、非公開の投稿に「非公開」と添える。
+/// [onAuthorTap] を渡すと、投稿者のアイコンと名前がタップできて、その人のUIDが渡される。
 class PostCard extends StatelessWidget {
   const PostCard({
     super.key,
     required this.post,
     required this.loadProfile,
     this.showVisibility = false,
+    this.onAuthorTap,
   });
 
   final Post post;
   final Future<UserProfile> Function(String uid) loadProfile;
   final bool showVisibility;
+  final void Function(String uid)? onAuthorTap;
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +49,7 @@ class PostCard extends StatelessWidget {
                   future: loadProfile(post.authorUid),
                   builder: (context, snapshot) {
                     // 読み込み中・失敗時は名前を「…」にして、投稿の表示は止めない。
-                    return Row(
+                    final author = Row(
                       children: [
                         AvatarView(profile: snapshot.data, radius: 16),
                         const SizedBox(width: 8),
@@ -55,6 +58,13 @@ class PostCard extends StatelessWidget {
                           style: textTheme.titleSmall,
                         ),
                       ],
+                    );
+                    final onTap = onAuthorTap;
+                    if (onTap == null) return author;
+                    return InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () => onTap(post.authorUid),
+                      child: author,
                     );
                   },
                 ),
@@ -95,12 +105,14 @@ class PostListBody extends StatelessWidget {
     required this.loadProfile,
     required this.emptyMessage,
     this.showVisibility = false,
+    this.onAuthorTap,
   });
 
   final AsyncSnapshot<List<Post>> snapshot;
   final Future<UserProfile> Function(String uid) loadProfile;
   final String emptyMessage;
   final bool showVisibility;
+  final void Function(String uid)? onAuthorTap;
 
   @override
   Widget build(BuildContext context) {
@@ -127,6 +139,7 @@ class PostListBody extends StatelessWidget {
         post: items[index],
         loadProfile: loadProfile,
         showVisibility: showVisibility,
+        onAuthorTap: onAuthorTap,
       ),
     );
   }

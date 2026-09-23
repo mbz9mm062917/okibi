@@ -4,7 +4,7 @@ import 'data/post.dart';
 import 'data/user_repository.dart';
 import 'my_posts_page.dart';
 import 'profile_edit_page.dart';
-import 'widgets/avatar_view.dart';
+import 'widgets/profile_parts.dart';
 
 /// 自分のプロフィール画面。
 ///
@@ -13,6 +13,8 @@ class ProfilePage extends StatelessWidget {
   const ProfilePage({
     super.key,
     required this.profile,
+    required this.followingCount,
+    required this.followerCount,
     required this.watchMyPosts,
     required this.loadProfile,
     required this.onSaveProfile,
@@ -20,6 +22,8 @@ class ProfilePage extends StatelessWidget {
   });
 
   final Stream<UserProfile> profile;
+  final Stream<int> followingCount;
+  final Stream<int> followerCount;
 
   /// 「自分の投稿」を開くたびに新しい購読を作る。
   final Stream<List<Post>> Function() watchMyPosts;
@@ -52,9 +56,27 @@ class ProfilePage extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _Header(profile: data, onEdit: () => _openEdit(context, data)),
+          ProfileHeader(
+            profile: data,
+            action: OutlinedButton(
+              onPressed: () => _openEdit(context, data),
+              child: const Text('プロフィールを編集'),
+            ),
+          ),
           const SizedBox(height: 16),
-          _Stats(recordDayCount: data.recordDayCount),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CountStat(label: 'フォロー', count: followingCount),
+              CountStat(label: 'フォロワー', count: followerCount),
+              // 記録日数は比較のもとになりうるので、本人にだけ表示する。
+              ProfileStat(
+                label: '記録日数',
+                value: '${data.recordDayCount}日',
+                note: 'あなただけに表示',
+              ),
+            ],
+          ),
           const SizedBox(height: 16),
           _MenuCard(
             icon: Icons.article_outlined,
@@ -136,84 +158,6 @@ class ProfilePage extends StatelessWidget {
         const SnackBar(content: Text('プロフィールを更新しました')),
       );
     }
-  }
-}
-
-class _Header extends StatelessWidget {
-  const _Header({required this.profile, required this.onEdit});
-
-  final UserProfile profile;
-  final VoidCallback onEdit;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final muted = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
-
-    return Column(
-      children: [
-        AvatarView(profile: profile, radius: 40),
-        const SizedBox(height: 12),
-        Text(profile.displayName, style: textTheme.titleLarge),
-        if (profile.statusMessage.isNotEmpty) ...[
-          const SizedBox(height: 4),
-          Text(
-            profile.statusMessage,
-            style: textTheme.bodyMedium?.copyWith(color: muted),
-            textAlign: TextAlign.center,
-          ),
-        ],
-        if (profile.genreTags.isNotEmpty) ...[
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            alignment: WrapAlignment.center,
-            children: [
-              for (final tag in profile.genreTags)
-                Text('#$tag', style: textTheme.bodySmall?.copyWith(color: muted)),
-            ],
-          ),
-        ],
-        const SizedBox(height: 12),
-        OutlinedButton(onPressed: onEdit, child: const Text('プロフィールを編集')),
-      ],
-    );
-  }
-}
-
-/// フォロー/フォロワー数(準備中)と記録日数。記録日数は本人にだけ表示する。
-class _Stats extends StatelessWidget {
-  const _Stats({required this.recordDayCount});
-
-  final int recordDayCount;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-    final muted = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6);
-
-    Widget stat(String label, String value, {String? note}) {
-      return Expanded(
-        child: Column(
-          children: [
-            Text(value, style: textTheme.titleMedium),
-            const SizedBox(height: 2),
-            Text(label, style: textTheme.bodySmall?.copyWith(color: muted)),
-            if (note != null)
-              Text(note, style: textTheme.labelSmall?.copyWith(color: muted)),
-          ],
-        ),
-      );
-    }
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        stat('フォロー', '—'),
-        stat('フォロワー', '—'),
-        stat('記録日数', '$recordDayCount日', note: 'あなただけに表示'),
-      ],
-    );
   }
 }
 

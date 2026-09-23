@@ -33,6 +33,41 @@ class PostRepository {
         .map((s) => s.docs.map(Post.fromDoc).toList());
   }
 
+  /// 指定した人の公開投稿を新しい順に監視する(他の人のプロフィール用)。
+  ///
+  /// `isPublic == true` の絞り込みで、非公開は本人しか読めないルールを満たす。
+  /// 複合インデックス (authorUid, isPublic, createdAt) が要る。
+  Stream<List<Post>> watchPublicPostsBy(String uid, {int limit = 50}) {
+    return _posts
+        .where('authorUid', isEqualTo: uid)
+        .where('isPublic', isEqualTo: true)
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((s) => s.docs.map(Post.fromDoc).toList());
+  }
+
+  /// 指定した人たちの公開投稿を新しい順に監視する(タイムラインの「フォロー中」用)。
+  ///
+  /// Firestoreの `whereIn` は一度に [maxAuthors] 人までしか指定できない。
+  /// それを超えるときは、UIDの並び順で先頭の [maxAuthors] 人だけを対象にする。
+  /// 複合インデックスは (authorUid, isPublic, createdAt) を使う。
+  Stream<List<Post>> watchPostsByAuthors(Set<String> uids, {int limit = 50}) {
+    if (uids.isEmpty) return Stream.value(const <Post>[]); // whereIn は空リスト不可
+
+    final authors = (uids.toList()..sort()).take(maxAuthors).toList();
+    return _posts
+        .where('authorUid', whereIn: authors)
+        .where('isPublic', isEqualTo: true)
+        .orderBy('createdAt', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map((s) => s.docs.map(Post.fromDoc).toList());
+  }
+
+  /// `whereIn` に渡せる投稿者の最大数。
+  static const maxAuthors = 30;
+
   /// 自分の投稿を新しい順に監視する(非公開も含む。プロフィールの「自分の投稿」用)。
   ///
   /// `authorUid == 自分` の絞り込みがあるので、セキュリティルール(本人は非公開も

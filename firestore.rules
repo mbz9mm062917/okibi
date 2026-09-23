@@ -44,9 +44,13 @@ service cloud.firestore {
     }
 
     // follows/{followerUid_followeeUid} : フォロー関係。フォローする本人のみ作成・削除可
+    // 自分自身はフォローできない。ドキュメントIDは「フォローする人_される人」に固定する。
     match /follows/{followId} {
       allow read: if signedIn();
-      allow create: if signedIn() && request.resource.data.followerUid == request.auth.uid;
+      allow create: if signedIn()
+        && request.resource.data.followerUid == request.auth.uid
+        && request.resource.data.followeeUid != request.auth.uid
+        && followId == request.auth.uid + '_' + request.resource.data.followeeUid;
       allow delete: if signedIn() && resource.data.followerUid == request.auth.uid;
     }
   }

@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import 'data/follow_repository.dart';
 import 'data/post_repository.dart';
 import 'data/stamp_repository.dart';
 import 'data/user_repository.dart';
@@ -14,10 +15,13 @@ import 'widgets/stamp_note_sheet.dart';
 
 /// ホーム画面。月間カレンダーと、今日を記録する縦長ボタンを表示する。
 class HomePage extends StatefulWidget {
-  const HomePage({super.key, required this.users});
+  const HomePage({super.key, required this.users, required this.follows});
 
   /// タイムラインと共有するので外から受け取る(プロフィールのキャッシュを共通にするため)。
   final UserRepository users;
+
+  /// プロフィール画面のフォロー数・フォロワー数の表示に使う。
+  final FollowRepository follows;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -152,6 +156,10 @@ class _HomePageState extends State<HomePage> {
       MaterialPageRoute(
         builder: (_) => ProfilePage(
           profile: _users.watchProfile(_user.uid),
+          followingCount: widget.follows
+              .watchFollowingUids(_user.uid)
+              .map((uids) => uids.length),
+          followerCount: widget.follows.watchFollowerCount(_user.uid),
           watchMyPosts: () => _posts.watchMyPosts(_user.uid),
           loadProfile: _users.fetchProfile,
           onSaveProfile: (ProfileEdit edit) => _users.updateProfile(

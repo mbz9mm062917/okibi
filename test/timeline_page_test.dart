@@ -25,12 +25,19 @@ Post post({
   );
 }
 
-Future<void> pumpTimeline(WidgetTester tester, Stream<List<Post>> posts) {
+Future<void> pumpTimeline(
+  WidgetTester tester,
+  Stream<List<Post>> posts, {
+  Stream<List<Post>>? followingPosts,
+  void Function(String uid)? onOpenProfile,
+}) {
   return tester.pumpWidget(
     MaterialApp(
       home: TimelinePage(
         posts: posts,
+        followingPosts: followingPosts ?? Stream.value(const <Post>[]),
         loadProfile: (uid) async => UserProfile(displayName: '名前-$uid'),
+        onOpenProfile: onOpenProfile ?? (_) {},
       ),
     ),
   );
@@ -85,14 +92,64 @@ void main() {
       expect(find.textContaining('読み込めませんでした'), findsOneWidget);
     });
 
-    testWidgets('「フォロー中」タブは準備中の表示になる', (tester) async {
+    testWidgets('「フォロー中」タブにはフォロー中の人の投稿が並ぶ', (tester) async {
+      await pumpTimeline(
+        tester,
+        Stream.value([post(id: 'a', authorUid: 'u1', text: '全体の投稿')]),
+        followingPosts:
+            Stream.value([post(id: 'b', authorUid: 'u2', text: 'フォロー中の人の投稿')]),
+      );
+      await tester.pumpAndSettle();
+
+      // 最初は「全体」タブ。
+      expect(find.text('全体の投稿'), findsOneWidget);
+
+      await tester.tap(find.text('フォロー中'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('フォロー中の人の投稿'), findsOneWidget);
+      expect(find.text('名前-u2'), findsOneWidget);
+    });
+
+    testWidgets('「フォロー中」タブは、誰の投稿も無いとき案内を出す', (tester) async {
       await pumpTimeline(tester, Stream.value([post(text: '全体の投稿')]));
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('フォロー中'));
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('準備中です'), findsOneWidget);
+      expect(find.textContaining('フォロー中の人の投稿は、まだありません'), findsOneWidget);
+    });
+
+    testWidgets('投稿者の名前をタップすると、その人のUIDで onOpenProfile が呼ばれる', (tester) async {
+      final opened = <String>[];
+      await pumpTimeline(
+        tester,
+        Stream.value([post(authorUid: 'u9', text: '本文')]),
+        onOpenProfile: opened.add,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('名前-u9'));
+      await tester.pump();
+
+      expect(opened, ['u9']);
+    });
+
+    testWidgets('自分の非公開の投稿は「フォロー中」タブには「非公開」の印を出さない', (tester) async {
+      // フォロー中には他の人の公開投稿だけが来る。印は「全体」タブでだけ付く。
+      await pumpTimeline(
+        tester,
+        Stream.value(const <Post>[]),
+        followingPosts: Stream.value([post(text: '公開の投稿')]),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('フォロー中'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('公開の投稿'), findsOneWidget);
+      expect(find.text('非公開'), findsNothing);
     });
 
     testWidgets('タブを切り替えて戻っても投稿が表示される', (tester) async {

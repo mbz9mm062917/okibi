@@ -30,6 +30,8 @@ Post post({required String id, required String text, bool isPublic = true}) {
 Future<void> pumpProfile(
   WidgetTester tester, {
   UserProfile profile = me,
+  Stream<int>? followingCount,
+  Stream<int>? followerCount,
   Stream<List<Post>> Function()? watchMyPosts,
   Future<void> Function()? onSignOut,
 }) async {
@@ -48,6 +50,8 @@ Future<void> pumpProfile(
                 MaterialPageRoute(
                   builder: (_) => ProfilePage(
                     profile: Stream.value(profile),
+                    followingCount: followingCount ?? Stream.value(0),
+                    followerCount: followerCount ?? Stream.value(0),
                     watchMyPosts: watchMyPosts ?? () => Stream.value(const <Post>[]),
                     loadProfile: (uid) async => const UserProfile(displayName: 'ほのお'),
                     onSaveProfile: (_) async {},
@@ -85,6 +89,31 @@ void main() {
       expect(find.text('あ'), findsOneWidget);
       expect(find.textContaining('#'), findsNothing);
       expect(find.text('0日'), findsOneWidget);
+    });
+
+    testWidgets('フォロー数・フォロワー数を表示する', (tester) async {
+      await pumpProfile(
+        tester,
+        followingCount: Stream.value(3),
+        followerCount: Stream.value(7),
+      );
+
+      // 「フォロー」と「フォロワー」のラベルの上に、それぞれの数が並ぶ。
+      expect(find.text('3'), findsOneWidget);
+      expect(find.text('7'), findsOneWidget);
+      expect(find.text('フォロー'), findsOneWidget);
+      expect(find.text('フォロワー'), findsOneWidget);
+    });
+
+    testWidgets('フォロー数を読み込み中は「—」を出す', (tester) async {
+      // 値が届かないストリーム
+      await pumpProfile(
+        tester,
+        followingCount: const Stream<int>.empty(),
+        followerCount: const Stream<int>.empty(),
+      );
+
+      expect(find.text('—'), findsNWidgets(2));
     });
 
     testWidgets('準備中のメニューは押せない', (tester) async {

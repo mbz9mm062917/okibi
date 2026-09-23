@@ -22,7 +22,7 @@ flowchart LR
     Profile --> Edit[プロフィール編集]
     Profile --> MyPosts[自分の投稿]
     Profile -->|ログアウト| Login
-    Timeline -.->|準備中| Other[他の人のプロフィール<br/>フォロー]
+    Timeline -->|投稿者の名前| Other[他の人のプロフィール<br/>フォロー]
 ```
 
 ## データモデル(Cloud Firestore)
@@ -69,9 +69,15 @@ flowchart LR
 | `reactionCount` | number | 炎リアクションの数 |
 | `createdAt` | timestamp | 投稿日時 |
 
-### `follows/{followerUid_followeeUid}` 🚧
+### `follows/{followerUid_followeeUid}` ✅
 
-`followerUid`(フォローする側)、`followeeUid`(される側)、`createdAt`
+| フィールド | 型 | 説明 |
+|---|---|---|
+| `followerUid` | string | フォローする側 |
+| `followeeUid` | string | フォローされる側 |
+| `createdAt` | timestamp | フォローした日時 |
+
+ドキュメントIDは `フォローする人_される人` に固定します。フォロー数・フォロワー数は、このコレクションの件数から数えます。
 
 ### `reactions/{postId_uid}` 🚧
 
@@ -88,7 +94,8 @@ flowchart LR
 - `users`: 誰でも読める。書けるのは本人だけ
 - `stamps`: 書き込み・削除は本人だけ
 - `posts`: **非公開の投稿は本人だけが読める**。書き込み・削除は投稿者だけ
-- `reactions` / `follows`: 作成・削除は、その操作をする本人だけ
+- `follows`: 作成・削除は、フォローする本人だけ。**自分自身はフォローできない**。ドキュメントIDは `フォローする人_される人` でなければ作れない
+- `reactions`: 作成・削除は、その操作をする本人だけ
 
 ## クエリとインデックス
 
@@ -97,6 +104,11 @@ flowchart LR
 | カレンダー(1か月分) | ドキュメントIDの範囲 `uid_YYYY-MM-01` 〜 `uid_YYYY-MM-31` | 不要 |
 | タイムライン | `isPublic == true` **OR** `authorUid == 自分`、`createdAt` の降順 | `posts`: (`isPublic`, `createdAt`) と (`authorUid`, `createdAt`) |
 | 自分の投稿 | `authorUid == 自分`、`createdAt` の降順 | `posts`: (`authorUid`, `createdAt`) |
+| 他の人の公開投稿 | `authorUid == その人` かつ `isPublic == true`、`createdAt` の降順 | `posts`: (`authorUid`, `isPublic`, `createdAt`) |
+| タイムライン「フォロー中」 | `authorUid in [フォロー中の人]` かつ `isPublic == true`、`createdAt` の降順 | 同上 |
+
+「フォロー中」は、Firestoreの `in` が一度に30件までしか指定できないため、フォローが30人を超えると、
+UIDの並び順で先頭の30人だけが対象になります。検証の段階では問題にならない人数なので、この上限のままにしています。
 
 セキュリティルールは「クエリの結果が必ずルールを満たす」ことを求めます。タイムラインの取得は、
 「公開」か「自分」のどちらかで必ず絞り込むことで、他人の非公開の投稿が読めないルールを満たしています。
